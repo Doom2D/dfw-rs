@@ -1,14 +1,11 @@
 mod wad;
 mod zlib;
-
 use clap::{arg, command, Parser, Subcommand};
-
+use zlib::ZlibCompressionLevel;
 use std::fs;
-
 use std::fs::*;
 use std::io::Read;
 use std::io::Write;
-
 use std::path::*;
 use wad::*;
 use walkdir::WalkDir;
@@ -54,6 +51,11 @@ struct Cli {
     /// Enable verbose mode
     #[arg(short, long)]
     verbose: bool,
+
+    /// Zlib compression level to use for DFWADs
+    #[arg(short, long)]
+    #[clap(value_enum, default_value_t=ZlibCompressionLevel::Default)]
+    zlib_level: ZlibCompressionLevel
 }
 
 #[derive(Subcommand)]
@@ -64,23 +66,22 @@ enum Commands {
     Pack {},
 }
 
-fn extract_from_bytes(source: Vec<u8>, target: &std::path::Path) {
+fn extract_from_bytes(source: Vec<u8>, target: &std::path::Path, verbose: bool) {
     let vec = parse_wad(&source).unwrap();
-    println!("{}", target.display());
     for dir in vec.iter() {
         let dir_path = target
             .clone()
             .join(Path::new(&dir.dir.clone().replace('\0', "")));
-        println!("dir_Path: {}", dir_path.display());
+        println!("{}:", dir_path.file_name().unwrap().to_str().unwrap());
         fs::create_dir_all(dir_path.clone()).unwrap();
         for elem in &dir.entries {
             let entry_path = dir_path
                 .clone()
                 .join(Path::new(&elem.name.clone().replace('\0', "")));
-            println!("Entry path: {}", entry_path.display());
+            println!("{}", entry_path.file_name().unwrap().to_str().unwrap());
             let bytes = read_entry(&source, &elem).unwrap();
             if is_wad_signature(&bytes) {
-                extract_from_bytes(bytes, &entry_path);
+                extract_from_bytes(bytes, &entry_path, verbose);
             } else {
                 fs::write(entry_path, bytes).expect("Unable to write file");
             }
@@ -88,14 +89,13 @@ fn extract_from_bytes(source: Vec<u8>, target: &std::path::Path) {
     }
 }
 
-fn extract(source: &std::path::PathBuf, target: &std::path::PathBuf) {
+fn extract(source: &std::path::PathBuf, target: &std::path::PathBuf, verbose: bool) {
     let file_path = source;
-    println!("Path {}", target.display());
     fs::create_dir_all(target.clone()).unwrap();
     let mut data: Vec<u8> = Vec::new();
     let mut file = File::open(file_path).expect("Unable to open file");
     file.read_to_end(&mut data).expect("Unable to read data");
-    extract_from_bytes(data, target.as_path());
+    extract_from_bytes(data, target.as_path(), verbose);
 }
 
 fn parent_from_path(src: &std::path::Path, path: &std::path::Path) -> Result<String, ()> {
@@ -179,19 +179,21 @@ fn create_entries(
     Ok(vec)
 }
 
-fn pack(source: &std::path::PathBuf, target: &std::path::PathBuf) -> Result<(), ()> {
+fn pack(source: &std::path::PathBuf, target: &std::path::PathBuf, verbose: bool, level: ZlibCompressionLevel) -> Result<(), ()> {
     let res = create_entries(&source, &target).unwrap();
-    for g in &res {
-        match g {
-            EntryType::Entry(entry) => {
-                println!("name1: {} dir: {}", entry.name, entry.dir);
-            }
-            EntryType::NestedEntry(nested_entry) => {
-                println!("name2: {} dir: {}", nested_entry.name, nested_entry.dir);
+    if verbose {
+        for g in &res {
+            match g {
+                EntryType::Entry(entry) => {
+                    println!("{}/{}", entry.dir, entry.name);
+                }
+                EntryType::NestedEntry(nested_entry) => {
+                    println!("{}/{}", nested_entry.dir, nested_entry.name);
+                }
             }
         }
     }
-    let bytes = create_wad(&res).unwrap();
+    let bytes = create_wad(&res, level).unwrap();
     let mut file = File::create(target.clone()).unwrap();
     file.write_all(&bytes).unwrap();
     Ok(())
@@ -201,12 +203,10 @@ fn main() {
     let cli = Cli::parse();
     match &cli.command {
         Commands::Extract {} => {
-            println!("Extract");
-            extract(&cli.source, &cli.target);
+            extract(&cli.source, &cli.target, cli.verbose);
         }
         Commands::Pack {} => {
-            println!("Pack");
-            pack(&cli.source, &cli.target).unwrap();
+            pack(&cli.source, &cli.target, cli.verbose, cli.zlib_level).unwrap();
         }
     };
 }

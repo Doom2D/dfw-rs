@@ -116,7 +116,7 @@ pub fn parse_wad(data: &Vec<u8>) -> Result<Vec<WadDirectory>, WadError> {
     Ok(directories)
 }
 
-pub fn create_wad(data: &Vec<EntryType>) -> Result<Vec<u8>, WadError> {
+pub fn create_wad(data: &Vec<EntryType>, level: ZlibCompressionLevel) -> Result<Vec<u8>, WadError> {
     let mut sum: usize = 0;
     let dirs: HashSet<String> = data
         .clone()
@@ -187,11 +187,11 @@ pub fn create_wad(data: &Vec<EntryType>) -> Result<Vec<u8>, WadError> {
             let (entry_buffer, entry_name, entry_dir) = match entry {
                 EntryType::Entry(entry) => (entry.buffer, entry.name, entry.dir),
                 EntryType::NestedEntry(entry) => {
-                    let nested_buffer = create_wad(&entry.entries).unwrap();
+                    let nested_buffer = create_wad(&entry.entries, level.clone()).unwrap();
                     (nested_buffer, entry.name, entry.dir)
                 }
             };
-            let compressed = compress_zlib(&entry_buffer, ZlibCompressionLevel::Best).unwrap();
+            let compressed = compress_zlib(&entry_buffer, level.clone()).unwrap();
             let size = compressed.len() as usize;
             println!("{} {}", entry_name, entry_dir);
             let (struct_name_bytes, _, _) = WINDOWS_1251.encode(&entry_name);

@@ -1,12 +1,12 @@
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use std::io::{Read, Write};
 
-#[derive(Debug)]
+#[derive(clap::ValueEnum, Clone, Debug)]
 pub enum ZlibCompressionLevel {
-  None,
-  Fast,
-  Best,
-  Default,
+None,
+Fast,
+Best,
+Default,
 }
 
 impl ZlibCompressionLevel {
