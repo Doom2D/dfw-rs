@@ -193,7 +193,6 @@ pub fn create_wad(data: &Vec<EntryType>, level: ZlibCompressionLevel) -> Result<
             };
             let compressed = compress_zlib(&entry_buffer, level.clone()).unwrap();
             let size = compressed.len() as usize;
-            println!("{} {}", entry_name, entry_dir);
             let (struct_name_bytes, _, _) = WINDOWS_1251.encode(&entry_name);
             let mut padded_struct_name_bytes = Vec::from(struct_name_bytes);
             padded_struct_name_bytes.resize(DFWAD_STRUCT_NAME_BYTES, 0);

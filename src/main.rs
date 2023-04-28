@@ -72,13 +72,17 @@ fn extract_from_bytes(source: Vec<u8>, target: &std::path::Path, verbose: bool) 
         let dir_path = target
             .clone()
             .join(Path::new(&dir.dir.clone().replace('\0', "")));
-        println!("{}:", dir_path.file_name().unwrap().to_str().unwrap());
+        if verbose {
+            println!("{}:", dir_path.file_name().unwrap().to_str().unwrap());
+        }
         fs::create_dir_all(dir_path.clone()).unwrap();
         for elem in &dir.entries {
             let entry_path = dir_path
                 .clone()
                 .join(Path::new(&elem.name.clone().replace('\0', "")));
-            println!("{}", entry_path.file_name().unwrap().to_str().unwrap());
+            if verbose {
+                println!("{}", entry_path.file_name().unwrap().to_str().unwrap());
+            }
             let bytes = read_entry(&source, &elem).unwrap();
             if is_wad_signature(&bytes) {
                 extract_from_bytes(bytes, &entry_path, verbose);
