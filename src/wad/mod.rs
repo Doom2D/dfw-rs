@@ -1,4 +1,4 @@
-use crate::{zlib::*, Entry};
+use crate::{zlib::*, Entry, EntryType, NestedEntry};
 
 use std::io::{Read};
 use std::str;
@@ -103,21 +103,28 @@ pub fn parse_wad(data: &Vec<u8>) -> Result<Vec<WadDirectory>, WadError> {
   Ok(directories)
 }
 
-pub fn create_wad2(data: &Vec<Entry>) -> Result<Vec<u8>, WadError> {
+pub fn create_wad2(data: &Vec<EntryType>) -> Result<Vec<u8>, WadError> {
   let mut sum: usize = 0;
-  let dirs: HashSet<String> = data.iter()
-    .map(|d| d.dir.clone())
+  let dirs: HashSet<String> = data.clone().iter()
+    .map(|d| match d {
+      EntryType::Entry(d) => d.dir.clone(),
+      EntryType::NestedEntry(d) => d.dir.clone()
+    })
     .collect();
-  let mut entry_vectors: Vec<Vec<Entry>> = Vec::new();
+  let mut entry_vectors: Vec<Vec<EntryType>> = Vec::new();
   // let dirs: Vec<WadDirectory> = Vec::new();
   for dir in dirs {
     println!("dir: {}", dir);
     sum = sum + 1;
     // let entries = data.clone().iter().filter(|d| d.dir == dir).collect;
-    let entries: Vec<Entry> = data.clone().iter().cloned().filter(|d| d.dir == dir).collect();
-    sum = sum + entries.len();
+    let entries: Vec<EntryType> = data.clone().iter().cloned().filter(|d| match d {
+      EntryType::Entry(d) => d.dir == dir,
+      EntryType::NestedEntry(d) => d.dir == dir
+    }).collect();
     entry_vectors.push(entries);
   }
+
+  sum = sum + data.len();
 
   println!("sum: {} len: {}", sum, data.len());
 
@@ -145,7 +152,11 @@ pub fn create_wad2(data: &Vec<Entry>) -> Result<Vec<u8>, WadError> {
     }
     let dir_offset_buffer = [0u8; DFWAD_STRUCT_OFFSET_BYTES];
     let dir_length_buffer = [0u8; DFWAD_STRUCT_SIZE_BYTES];
-    let dir_name_unencoded = v[0].dir.clone();
+    let x = &v[0].clone();
+    let dir_name_unencoded = match x {
+      EntryType::Entry(x) => &x.dir,
+      EntryType::NestedEntry(x) => &x.dir
+    };
     let (dir_name_bytes, _, _) = WINDOWS_1251.encode(&dir_name_unencoded);
     let mut padded_dir_name_bytes = Vec::from(dir_name_bytes);
     padded_dir_name_bytes.resize(DFWAD_STRUCT_NAME_BYTES, 0);
@@ -154,12 +165,19 @@ pub fn create_wad2(data: &Vec<Entry>) -> Result<Vec<u8>, WadError> {
     cursor.write_all(&dir_offset_buffer).unwrap();
     cursor.write_all(&dir_length_buffer).unwrap();
     for entry in v {
-      let compressed = compress_zlib(&entry.buffer, ZlibCompressionLevel::Default).unwrap();
+      let (entry_buffer, entry_name, entry_dir) = match entry {
+        EntryType::Entry(entry) => (entry.buffer, entry.name, entry.dir),
+        EntryType::NestedEntry(entry) => {
+            let nested_buffer = create_wad2(&entry.entries).unwrap();
+            (nested_buffer, entry.name, entry.dir)
+        }
+    };
+      let compressed = compress_zlib(&entry_buffer, ZlibCompressionLevel::Best).unwrap();
       let size = compressed.len() as usize;
       // let path = Path::new(&entry.dir);
       // let name = path.file_name().unwrap().to_str().unwrap();
-      println!("{} {}", &entry.name, &entry.dir);
-      let (struct_name_bytes, _, _) = WINDOWS_1251.encode(&entry.name);
+      println!("{} {}", entry_name, entry_dir);
+      let (struct_name_bytes, _, _) = WINDOWS_1251.encode(&entry_name);
       let mut padded_struct_name_bytes = Vec::from(struct_name_bytes);
       padded_struct_name_bytes.resize(DFWAD_STRUCT_NAME_BYTES, 0);
 

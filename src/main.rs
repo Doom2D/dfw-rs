@@ -27,7 +27,7 @@ pub struct NestedEntry {
 }
 
 #[derive(Debug, Clone)]
-enum EntryType {
+pub enum EntryType {
     Entry(Entry),
     NestedEntry(NestedEntry),
 }
@@ -110,6 +110,37 @@ fn create_entry(src: &std::path::Path, path: &std::path::Path) -> Result<Entry, 
     let entry = Entry { buffer, dir, name };
     Ok(entry)
 }
+/// one-below
+fn create_entries(source: &std::path::Path, target: &std::path::Path) -> Result<Vec<EntryType>, ()> {
+    let mut vec: Vec<EntryType> = Vec::new();
+    for elem in WalkDir::new(source).min_depth(1).max_depth(1).into_iter().filter_map(|e| e.ok()) {
+        // println!("Checking {}", elem.path().display());
+        if elem.file_type().is_file() {
+            let entry = create_entry(source, elem.path()).unwrap();
+            vec.push(EntryType::Entry(entry));
+        } else if elem.file_type().is_dir() {
+            let elem_path = elem.path();
+            for sub_elem in WalkDir::new(elem_path).min_depth(1).max_depth(1).into_iter().filter_map(|e| e.ok()) {
+                //println!("Checking {}", sub_elem.path().display());
+                if sub_elem.file_type().is_file() {
+                    // let dir = sub_elem.path().strip_prefix(elem_path).unwrap();
+                    // let name = sub_elem.path().file_name().unwrap();
+                    let entry = create_entry(source, sub_elem.path()).unwrap();
+                    vec.push(EntryType::Entry(entry));
+                } else if sub_elem.file_type().is_dir() {
+                    let entries = create_entries(sub_elem.path(), elem.path()).unwrap();
+                    let nested = NestedEntry {
+                        entries,
+                        dir: elem.path().strip_prefix(source).unwrap().to_str().unwrap().to_string(),
+                        name: sub_elem.path().file_name().unwrap().to_str().unwrap().to_string()
+                    };
+                    vec.push(EntryType::NestedEntry(nested))
+                }
+            }
+        }
+    }
+    Ok(vec)
+}
 
 fn pack(source: &std::path::PathBuf, target: &std::path::PathBuf) -> Result<(), ()> {
     let source_dir = source;
@@ -187,16 +218,6 @@ fn pack(source: &std::path::PathBuf, target: &std::path::PathBuf) -> Result<(), 
         }
     }
     //let entries = create_wad(&entries).unwrap();
-    for g in &entries {
-        match g {
-            EntryType::Entry(entry) => {
-                println!("name1: {} dir: {}", entry.name, entry.dir);
-            }
-            EntryType::NestedEntry(nested_entry) => {
-                println!("name2: {} dir: {}", nested_entry.name, nested_entry.dir);
-            }
-        }
-    }
     /*
     let bytes = create_wad2(&entries);
     println!("{}", target.display());
@@ -209,7 +230,21 @@ fn pack(source: &std::path::PathBuf, target: &std::path::PathBuf) -> Result<(), 
 fn main() {
     let cli = Cli::parse();
     // extract(&cli.source, &cli.target);
-    pack(&cli.source, &cli.target).unwrap();
+    // pack(&cli.source, &cli.target).unwrap();
+    let res = create_entries(&cli.source, &cli.target).unwrap();
+    for g in &res {
+        match g {
+            EntryType::Entry(entry) => {
+                println!("name1: {} dir: {}", entry.name, entry.dir);
+            }
+            EntryType::NestedEntry(nested_entry) => {
+                println!("name2: {} dir: {}", nested_entry.name, nested_entry.dir);
+            }
+        }
+    }
+    let bytes = create_wad2(&res).unwrap();
+    let mut file = File::create(cli.target.clone()).unwrap();
+    file.write_all(&bytes).unwrap()
 
     // println!("{:?}", entries);
 }
