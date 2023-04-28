@@ -50,6 +50,10 @@ struct Cli {
 
     /// Target file or directory
     target: std::path::PathBuf,
+
+    /// Enable verbose mode
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 #[derive(Subcommand)]
@@ -105,7 +109,6 @@ fn file_name_from_path(path: &std::path::Path) -> Result<String, ()> {
 }
 
 fn create_entry(src: &std::path::Path, path: &std::path::Path) -> Result<Entry, ()> {
-    //println!("PatH: {}", src.display());
     let mut file = File::open(path).unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
@@ -120,17 +123,13 @@ fn create_entry(src: &std::path::Path, path: &std::path::Path) -> Result<Entry, 
 fn create_entries(source: &std::path::Path, target: &std::path::Path) -> Result<Vec<EntryType>, ()> {
     let mut vec: Vec<EntryType> = Vec::new();
     for elem in WalkDir::new(source).min_depth(1).max_depth(1).into_iter().filter_map(|e| e.ok()) {
-        // println!("Checking {}", elem.path().display());
         if elem.file_type().is_file() {
             let entry = create_entry(source, elem.path()).unwrap();
             vec.push(EntryType::Entry(entry));
         } else if elem.file_type().is_dir() {
             let elem_path = elem.path();
             for sub_elem in WalkDir::new(elem_path).min_depth(1).max_depth(1).into_iter().filter_map(|e| e.ok()) {
-                //println!("Checking {}", sub_elem.path().display());
                 if sub_elem.file_type().is_file() {
-                    // let dir = sub_elem.path().strip_prefix(elem_path).unwrap();
-                    // let name = sub_elem.path().file_name().unwrap();
                     let entry = create_entry(source, sub_elem.path()).unwrap();
                     vec.push(EntryType::Entry(entry));
                 } else if sub_elem.file_type().is_dir() {
@@ -149,96 +148,7 @@ fn create_entries(source: &std::path::Path, target: &std::path::Path) -> Result<
 }
 
 fn pack(source: &std::path::PathBuf, target: &std::path::PathBuf) -> Result<(), ()> {
-    let source_dir = source;
-    let source_as_path = source.as_path();
-    let mut entries: Vec<EntryType> = Vec::new();
-    for entry in WalkDir::new(source_dir)
-        .min_depth(1)
-        .max_depth(1)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        if entry.file_type().is_file() {
-            // println!("ADding3: {}", entry.path().display());
-            let entry = create_entry(source_as_path, entry.path()).unwrap();
-            // println!("b: {} d: {} n:", entry.dir, entry.name);
-            entries.push(EntryType::Entry(entry));
-        } else if entry.file_type().is_dir() {
-            let path = entry.path();
-            for subentry in WalkDir::new(path).min_depth(1).max_depth(1).into_iter().filter_map(|e| e.ok()) {
-                let subpath = subentry.path();
-                // let mut subentries = Vec::new();
-                if subentry.file_type().is_dir() {
-                    for x in WalkDir::new(subpath).min_depth(1).max_depth(1).into_iter().filter_map(|e| e.ok()) {
-                        let sub_wad_dir = subentry.path();
-                        let mut sub_wad_entries = Vec::new();
-                        if x.file_type().is_file() {
-                            let subentry = create_entry(sub_wad_dir, x.path()).unwrap();
-                            println!("ADding2: name: {} dir: {}", subentry.name, subentry.dir);
-                            sub_wad_entries.push(EntryType::Entry(subentry));
-                        } else {
-                            for y in WalkDir::new(sub_wad_dir).min_depth(1).max_depth(2).into_iter().filter_map(|e| e.ok()) {
-                                if y.file_type().is_file() {
-                                    println!("Subentry path: {}", y.path().display());
-                                }
-                                else if y.file_type().is_dir() {
-                                    // return Err(());
-                                    println!("Is dir {}", y.path().display());
-                                }
-                            }
-                            /* 
-                            println!(
-                                "{} {} {}",
-                                entry.path().display(),
-                                subentry.path().display(),
-                                x.path().strip_prefix(sub_wad_dir).unwrap().display(),
-                            );
-                            */
-                            // let subentry = create_entry(sub_wad_dir, x.path()).unwrap();
-                            // println!("subentry: {}", subentry.dir);
-                            /*
-                            let nested = NestedEntry {
-                                dir: parent_from_path(source_as_path, entry.path()).unwrap(),
-                                name: file_name_from_path(entry.path()).unwrap(),
-                                entries: subentries,
-                            };
-                            entries.push(EntryType::NestedEntry(nested));
-                            */
-                            // return Err(());
-                            continue;
-                        }
-                        let sub_wad_entry = NestedEntry {
-                            dir: subpath.strip_prefix(source_as_path).unwrap().parent().unwrap().to_str().unwrap().to_string(),
-                            name: subpath.file_name().unwrap().to_str().unwrap().to_string(),
-                            entries: sub_wad_entries,
-                        };
-                        entries.push(EntryType::NestedEntry(sub_wad_entry));
-                    }
-                } else if subentry.file_type().is_file() {
-                    // println!("ADding1: {}", subentry.path().display());
-                    let entry = create_entry(source_as_path, subentry.path()).unwrap();
-                    // println!("b: {} d: {} n:", entry.dir, entry.name);
-                    entries.push(EntryType::Entry(entry));
-                }
-            }
-        }
-    }
-    //let entries = create_wad(&entries).unwrap();
-    /*
-    let bytes = create_wad2(&entries);
-    println!("{}", target.display());
-    let mut file = File::create(target.clone()).unwrap();
-    file.write_all(&bytes.unwrap()).unwrap();
-    */
-    Ok(())
-}
-
-fn main() {
-    let cli = Cli::parse();
-    extract(&cli.source, &cli.target);
-    // pack(&cli.source, &cli.target).unwrap();
-    /*
-    let res = create_entries(&cli.source, &cli.target).unwrap();
+    let res = create_entries(&source, &target).unwrap();
     for g in &res {
         match g {
             EntryType::Entry(entry) => {
@@ -249,10 +159,23 @@ fn main() {
             }
         }
     }
-    let bytes = create_wad2(&res).unwrap();
-    let mut file = File::create(cli.target.clone()).unwrap();
-    file.write_all(&bytes).unwrap()
-    */
+    let bytes = create_wad(&res).unwrap();
+    let mut file = File::create(target.clone()).unwrap();
+    file.write_all(&bytes).unwrap();
+    Ok(())
+}
 
-    // println!("{:?}", entries);
+fn main() {
+    let cli = Cli::parse();
+    match &cli.command {
+        Commands::Extract {} => {
+            println!("Extract");
+            extract(&cli.source, &cli.target);
+        },
+        Commands::Pack {} => {
+            println!("Pack");
+            pack(&cli.source, &cli.target).unwrap();
+        },
+        _ => {}
+    };
 }
