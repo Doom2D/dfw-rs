@@ -2,13 +2,13 @@ mod wad;
 mod zlib;
 
 use clap::{arg, command, Parser, Subcommand};
-use std::env::current_dir;
+
 use std::fs;
-use std::fs::OpenOptions;
+
 use std::fs::*;
 use std::io::Read;
 use std::io::Write;
-use std::path::PathBuf;
+
 use std::path::*;
 use wad::*;
 use walkdir::WalkDir;
@@ -99,7 +99,14 @@ fn extract(source: &std::path::PathBuf, target: &std::path::PathBuf) {
 }
 
 fn parent_from_path(src: &std::path::Path, path: &std::path::Path) -> Result<String, ()> {
-    let parent = path.parent().unwrap().strip_prefix(src).unwrap().to_str().unwrap().to_string();
+    let parent = path
+        .parent()
+        .unwrap()
+        .strip_prefix(src)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
     Ok(parent)
 }
 
@@ -120,15 +127,28 @@ fn create_entry(src: &std::path::Path, path: &std::path::Path) -> Result<Entry, 
     Ok(entry)
 }
 /// one-below
-fn create_entries(source: &std::path::Path, target: &std::path::Path) -> Result<Vec<EntryType>, ()> {
+fn create_entries(
+    source: &std::path::Path,
+    _target: &std::path::Path,
+) -> Result<Vec<EntryType>, ()> {
     let mut vec: Vec<EntryType> = Vec::new();
-    for elem in WalkDir::new(source).min_depth(1).max_depth(1).into_iter().filter_map(|e| e.ok()) {
+    for elem in WalkDir::new(source)
+        .min_depth(1)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
         if elem.file_type().is_file() {
             let entry = create_entry(source, elem.path()).unwrap();
             vec.push(EntryType::Entry(entry));
         } else if elem.file_type().is_dir() {
             let elem_path = elem.path();
-            for sub_elem in WalkDir::new(elem_path).min_depth(1).max_depth(1).into_iter().filter_map(|e| e.ok()) {
+            for sub_elem in WalkDir::new(elem_path)
+                .min_depth(1)
+                .max_depth(1)
+                .into_iter()
+                .filter_map(|e| e.ok())
+            {
                 if sub_elem.file_type().is_file() {
                     let entry = create_entry(source, sub_elem.path()).unwrap();
                     vec.push(EntryType::Entry(entry));
@@ -136,8 +156,20 @@ fn create_entries(source: &std::path::Path, target: &std::path::Path) -> Result<
                     let entries = create_entries(sub_elem.path(), elem.path()).unwrap();
                     let nested = NestedEntry {
                         entries,
-                        dir: elem.path().strip_prefix(source).unwrap().to_str().unwrap().to_string(),
-                        name: sub_elem.path().file_name().unwrap().to_str().unwrap().to_string()
+                        dir: elem
+                            .path()
+                            .strip_prefix(source)
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_string(),
+                        name: sub_elem
+                            .path()
+                            .file_name()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_string(),
                     };
                     vec.push(EntryType::NestedEntry(nested))
                 }
@@ -171,11 +203,10 @@ fn main() {
         Commands::Extract {} => {
             println!("Extract");
             extract(&cli.source, &cli.target);
-        },
+        }
         Commands::Pack {} => {
             println!("Pack");
             pack(&cli.source, &cli.target).unwrap();
-        },
-        _ => {}
+        }
     };
 }
