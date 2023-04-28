@@ -55,6 +55,20 @@ pub enum WadError {
   EmptyDirectory
 }
 
+pub fn is_wad_signature(data: &Vec<u8>) -> bool {
+  let mut cursor = std::io::Cursor::new(data);
+  let mut signature_buffer = [0; 5];
+  let err1 = cursor.read_exact(&mut signature_buffer);
+  if let Err(error) = err1 {
+    return false;
+  }
+  let err2 = str::from_utf8(&signature_buffer);
+  if let Err(error) = err2 {
+    return false;
+  }
+  return err2 == Ok(DFWAD_SIGNATURE);
+}
+
 pub fn parse_wad(data: &Vec<u8>) -> Result<Vec<WadDirectory>, WadError> {
   let mut cursor = std::io::Cursor::new(data);
   let mut signature_buffer = [0; 5];
@@ -96,9 +110,10 @@ pub fn parse_wad(data: &Vec<u8>) -> Result<Vec<WadDirectory>, WadError> {
           return Err(WadError::InvalidEntry);
       }
       let entry = WadEntry::new(&struct_name.to_string().replace('\0', ""), length, offset);
-      println!("Entry {}, offset: {}, length: {}", entry.name, entry.offset, entry.size);
+      // println!("Entry {}, offset: {}, length: {}", entry.name, entry.offset, entry.size);
       entries.push(entry);
   }
+  directories.push(WadDirectory::new(&current_directory, entries));
   println!("DFWAD {} with signature {} has {} entries", signature, version, number_of_lumps);
   Ok(directories)
 }

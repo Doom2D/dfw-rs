@@ -60,32 +60,38 @@ enum Commands {
     Pack {},
 }
 
-fn extract(source: &std::path::PathBuf, target: &std::path::PathBuf) {
-    let file_path = source;
-    // let file_name = file_path.file_name().unwrap().to_str().unwrap();
-    let file_stem = file_path.file_stem().unwrap();
-    let target_path = target.join(Path::new(&file_stem));
-    println!("Path {}", target_path.display());
-    fs::create_dir_all(target_path.clone()).unwrap();
-    let mut data: Vec<u8> = Vec::new();
-    let mut file = File::open(file_path).expect("Unable to open file");
-    file.read_to_end(&mut data).expect("Unable to read data");
-    let vec = parse_wad(&data).unwrap();
-    println!("{}", target_path.display());
+fn extract_from_bytes(source: Vec<u8>, target: &std::path::Path) {
+    let vec = parse_wad(&source).unwrap();
+    println!("{}", target.display());
     for dir in vec.iter() {
-        let dir_path = target_path
+        let dir_path = target
             .clone()
             .join(Path::new(&dir.dir.clone().replace('\0', "")));
+        println!("dir_Path: {}", dir_path.display());
         fs::create_dir_all(dir_path.clone()).unwrap();
         for elem in &dir.entries {
             let entry_path = dir_path
                 .clone()
                 .join(Path::new(&elem.name.clone().replace('\0', "")));
-            println!("{}", entry_path.display());
-            let bytes = read_entry(&data, &elem).unwrap();
-            fs::write(entry_path, bytes).expect("Unable to write file");
+            println!("Entry path: {}", entry_path.display());
+            let bytes = read_entry(&source, &elem).unwrap();
+            if is_wad_signature(&bytes) {
+                extract_from_bytes(bytes, &entry_path);
+            } else {
+                fs::write(entry_path, bytes).expect("Unable to write file");
+            }
         }
     }
+}
+
+fn extract(source: &std::path::PathBuf, target: &std::path::PathBuf) {
+    let file_path = source;
+    println!("Path {}", target.display());
+    fs::create_dir_all(target.clone()).unwrap();
+    let mut data: Vec<u8> = Vec::new();
+    let mut file = File::open(file_path).expect("Unable to open file");
+    file.read_to_end(&mut data).expect("Unable to read data");
+    extract_from_bytes(data, target.as_path());
 }
 
 fn parent_from_path(src: &std::path::Path, path: &std::path::Path) -> Result<String, ()> {
@@ -229,8 +235,9 @@ fn pack(source: &std::path::PathBuf, target: &std::path::PathBuf) -> Result<(), 
 
 fn main() {
     let cli = Cli::parse();
-    // extract(&cli.source, &cli.target);
+    extract(&cli.source, &cli.target);
     // pack(&cli.source, &cli.target).unwrap();
+    /*
     let res = create_entries(&cli.source, &cli.target).unwrap();
     for g in &res {
         match g {
@@ -245,6 +252,7 @@ fn main() {
     let bytes = create_wad2(&res).unwrap();
     let mut file = File::create(cli.target.clone()).unwrap();
     file.write_all(&bytes).unwrap()
+    */
 
     // println!("{:?}", entries);
 }
