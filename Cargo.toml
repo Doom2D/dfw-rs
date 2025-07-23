@@ -2,15 +2,11 @@
 name = "dfwad"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+rust-version = "1.77"
 
 [dependencies]
-byteorder = "1.4.3"
-clap = {version = "4.2.4", features = ["derive", "cargo"]}
-encoding_rs = "0.8.32"
-flate2 = "1.0.25"
-fluent = "0.16.0"
-i18n-embed = { version = "0.13.8", features = ["gettext-system", "desktop-requester"]}
-rust-embed = "6"
-walkdir = "2.3.3"
+byteorder = "1.5.0"
+clap = {version = "4.5.41", features = ["derive", "cargo"]}
+encoding_rs = "0.8.35"
+flate2 = "1.1.2"
+walkdir = "2.5.0"
