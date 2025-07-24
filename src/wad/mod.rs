@@ -140,7 +140,7 @@ pub fn create_wad(data: &Vec<EntryType>, level: ZlibCompressionLevel) -> Result<
             .collect();
         entry_vectors.push(entries);
     }
-    sum = sum + data.len();
+    sum += data.len();
 
     let bytes: Vec<u8> = Vec::new();
     let mut cursor = std::io::Cursor::new(bytes);
@@ -184,7 +184,7 @@ pub fn create_wad(data: &Vec<EntryType>, level: ZlibCompressionLevel) -> Result<
             + DFWAD_STRUCT_OFFSET_BYTES
             + DFWAD_STRUCT_SIZE_BYTES;
         for entry in v {
-            let (entry_buffer, entry_name, entry_dir) = match entry {
+            let (entry_buffer, entry_name, _entry_dir) = match entry {
                 EntryType::Entry(entry) => (entry.buffer, entry.name, entry.dir),
                 EntryType::NestedEntry(entry) => {
                     let nested_buffer = create_wad(&entry.entries, level.clone()).unwrap();

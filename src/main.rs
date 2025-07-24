@@ -69,9 +69,7 @@ enum Commands {
 fn extract_from_bytes(source: Vec<u8>, target: &std::path::Path, verbose: bool) {
     let vec = parse_wad(&source).unwrap();
     for dir in vec.iter() {
-        let dir_path = target
-            .clone()
-            .join(Path::new(&dir.dir.clone().replace('\0', "")));
+        let dir_path = target.join(Path::new(&dir.dir.clone().replace('\0', "")));
         if verbose {
             println!("{}:", dir_path.file_name().unwrap().to_str().unwrap());
         }
@@ -139,7 +137,7 @@ fn create_entries(
     for elem in WalkDir::new(source)
         .min_depth(1)
         .max_depth(1)
-        .sort_by(|a, b| a.file_name().cmp(b.file_name()))
+        .sort_by_file_name()
         .into_iter()
         .filter_map(|e| e.ok())
     {
@@ -151,7 +149,7 @@ fn create_entries(
             for sub_elem in WalkDir::new(elem_path)
                 .min_depth(1)
                 .max_depth(1)
-                .sort_by(|a, b| a.file_name().cmp(b.file_name()))
+                .sort_by_file_name()
                 .into_iter()
                 .filter_map(|e| e.ok())
             {
