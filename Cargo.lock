@@ -126,7 +126,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dfwad"
+name = "dfw-rs"
 version = "0.1.0"
 dependencies = [
  "byteorder",
