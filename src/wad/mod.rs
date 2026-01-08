@@ -1,7 +1,7 @@
 use crate::{zlib::*, EntryType};
 
 use std::{
-    collections::HashSet,
+    collections::BTreeSet,
     io::{Read, Seek, SeekFrom, Write},
     str,
 };
@@ -117,7 +117,7 @@ pub fn parse_wad(data: &Vec<u8>) -> Result<Vec<WadDirectory>, WadError> {
 
 pub fn create_wad(data: &Vec<EntryType>, level: ZlibCompressionLevel) -> Result<Vec<u8>, WadError> {
     let mut sum: usize = 0;
-    let dirs: HashSet<String> = data
+    let dirs: BTreeSet<String> = data
         .iter()
         .map(|d| match d {
             EntryType::Entry(d) => d.dir.clone(),
