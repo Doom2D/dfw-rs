@@ -119,7 +119,6 @@ pub fn parse_wad(data: &Vec<u8>) -> Result<Vec<WadDirectory>, WadError> {
 pub fn create_wad(data: &Vec<EntryType>, level: ZlibCompressionLevel) -> Result<Vec<u8>, WadError> {
     let mut sum: usize = 0;
     let dirs: HashSet<String> = data
-        .clone()
         .iter()
         .map(|d| match d {
             EntryType::Entry(d) => d.dir.clone(),
@@ -130,13 +129,12 @@ pub fn create_wad(data: &Vec<EntryType>, level: ZlibCompressionLevel) -> Result<
     for dir in dirs {
         sum = sum + 1;
         let entries: Vec<EntryType> = data
-            .clone()
             .iter()
-            .cloned()
             .filter(|d| match d {
                 EntryType::Entry(d) => d.dir == dir,
                 EntryType::NestedEntry(d) => d.dir == dir,
             })
+            .cloned()
             .collect();
         entry_vectors.push(entries);
     }
