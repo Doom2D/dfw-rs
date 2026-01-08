@@ -1,14 +1,18 @@
 mod wad;
 mod zlib;
+
+use std::{
+    fs,
+    io::{Read, Write},
+    path::Path,
+};
+
 use clap::{arg, command, Parser, Subcommand};
-use zlib::ZlibCompressionLevel;
-use std::fs;
-use std::fs::*;
-use std::io::Read;
-use std::io::Write;
-use std::path::*;
-use wad::*;
 use walkdir::WalkDir;
+
+use wad::*;
+use zlib::ZlibCompressionLevel;
+
 #[derive(Debug, Clone)]
 pub struct Entry {
     buffer: Vec<u8>,
@@ -95,7 +99,7 @@ fn extract(source: &std::path::PathBuf, target: &std::path::PathBuf, verbose: bo
     let file_path = source;
     fs::create_dir_all(target.clone()).unwrap();
     let mut data: Vec<u8> = Vec::new();
-    let mut file = File::open(file_path).expect("Unable to open file");
+    let mut file = fs::File::open(file_path).expect("Unable to open file");
     file.read_to_end(&mut data).expect("Unable to read data");
     extract_from_bytes(data, target.as_path(), verbose);
 }
@@ -118,7 +122,7 @@ fn file_name_from_path(path: &std::path::Path) -> Result<String, ()> {
 }
 
 fn create_entry(src: &std::path::Path, path: &std::path::Path) -> Result<Entry, ()> {
-    let mut file = File::open(path).unwrap();
+    let mut file = fs::File::open(path).unwrap();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer).unwrap();
 
@@ -198,7 +202,7 @@ fn pack(source: &std::path::PathBuf, target: &std::path::PathBuf, verbose: bool,
         }
     }
     let bytes = create_wad(&res, level).unwrap();
-    let mut file = File::create(target.clone()).unwrap();
+    let mut file = fs::File::create(target.clone()).unwrap();
     file.write_all(&bytes).unwrap();
     Ok(())
 }

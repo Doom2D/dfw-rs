@@ -1,13 +1,12 @@
 use crate::{zlib::*, EntryType};
 
-use encoding_rs::WINDOWS_1251;
-use std::io::Read;
-use std::str;
+use std::{
+    collections::HashSet,
+    io::{Read, Seek, SeekFrom, Write},
+    str,
+};
 
-use std::collections::HashSet;
-use std::io::Seek;
-use std::io::SeekFrom;
-use std::io::Write;
+use encoding_rs::WINDOWS_1251;
 
 const DFWAD_SIGNATURE: &str = "DFWAD";
 const DFWAD_SUPPORTED_VERSION: u8 = 1;

@@ -1,23 +1,24 @@
-use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use std::io::{Read, Write};
+
+use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum ZlibCompressionLevel {
-None,
-Fast,
-Best,
-Default,
+    None,
+    Fast,
+    Best,
+    Default,
 }
 
 impl ZlibCompressionLevel {
-  pub fn to_flate2_compression(&self) -> Compression {
-      match self {
-          ZlibCompressionLevel::None => Compression::none(),
-          ZlibCompressionLevel::Fast => Compression::fast(),
-          ZlibCompressionLevel::Best => Compression::best(),
-          ZlibCompressionLevel::Default => Compression::default(),
-      }
-  }
+    pub fn to_flate2_compression(&self) -> Compression {
+        match self {
+            ZlibCompressionLevel::None => Compression::none(),
+            ZlibCompressionLevel::Fast => Compression::fast(),
+            ZlibCompressionLevel::Best => Compression::best(),
+            ZlibCompressionLevel::Default => Compression::default(),
+        }
+    }
 }
 
 pub fn decompress_zlib(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
